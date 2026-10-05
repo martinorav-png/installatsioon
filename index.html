@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EKA galerii</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; }
+    #cross {
+      position: fixed; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
+      border: 1.5px solid rgba(255,255,255,0.85); border-radius: 50%; pointer-events: none;
+      mix-blend-mode: difference;
+    }
+    #enter {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      background: rgba(12,12,12,0.28); color: white; cursor: pointer;
+    }
+    #enter div {
+      background: rgba(20,20,20,0.72); padding: 22px 26px; border-radius: 10px;
+      font: 15px/1.5 "Segoe UI", sans-serif; text-align: center; max-width: 28rem;
+    }
+    #enter kbd {
+      font: 12px/1 ui-monospace, monospace; border: 1px solid rgba(255,255,255,0.4);
+      padding: 1px 6px; border-radius: 4px;
+    }
+    #prompt {
+      position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%);
+      color: #e9fbff; font: 600 15px/1 "Segoe UI", sans-serif; letter-spacing: 0.04em;
+      background: rgba(8, 14, 18, 0.72); border: 1px solid rgba(140, 230, 255, 0.45);
+      padding: 8px 14px; border-radius: 8px; pointer-events: none;
+      text-shadow: 0 0 12px rgba(120, 220, 255, 0.45);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="enter">
+    <div>
+      <b>EKA galerii</b><br />
+      Click to walk in.<br />
+      <kbd>W A S D</kbd> move &nbsp; mouse look &nbsp; <kbd>Shift</kbd> faster<br />
+      <kbd>E</kbd> at a station &nbsp; <kbd>Esc</kbd> to release the mouse
+    </div>
+  </div>
+  <div id="cross" class="hidden"></div>
+  <div id="prompt" class="hidden"></div>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js"
+    }
+  }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

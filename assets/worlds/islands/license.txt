@@ -1,0 +1,11 @@
+Model Information:
+* title:	Interdimensional Floating Islands
+* source:	https://sketchfab.com/3d-models/interdimensional-floating-islands-0742e636aa9a40b5865436511e3595cf
+* author:	Artbake Graphics (https://sketchfab.com/ismir)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Interdimensional Floating Islands" (https://sketchfab.com/3d-models/interdimensional-floating-islands-0742e636aa9a40b5865436511e3595cf) by Artbake Graphics (https://sketchfab.com/ismir) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
