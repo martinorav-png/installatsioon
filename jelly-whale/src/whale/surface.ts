@@ -1,4 +1,4 @@
-export function createNormalSmoother(indices: Uint32Array, vertexCount: number) {
+function adjacency(indices: Uint32Array, vertexCount: number) {
   const counts = new Uint32Array(vertexCount);
   for (const i of indices) counts[i] += 2;
   const offsets = new Uint32Array(vertexCount + 1);
@@ -11,6 +11,31 @@ export function createNormalSmoother(indices: Uint32Array, vertexCount: number) 
     neighbours[cursor[b]++] = a;neighbours[cursor[b]++] = c;
     neighbours[cursor[c]++] = a;neighbours[cursor[c]++] = b;
   }
+  return { counts, offsets, neighbours };
+}
+
+// Taubin's alternating passes remove small marching-grid ridges without the
+// cumulative shrinkage of ordinary Laplacian smoothing. This runs only at load.
+export function relaxSurface(positions: Float32Array, indices: Uint32Array) {
+  const vertexCount = positions.length / 3;
+  const { counts, offsets, neighbours } = adjacency(indices, vertexCount);
+  const result = new Float32Array(positions.length);
+  for (let pass = 0; pass < 12; pass++) {
+    const strength = pass % 2 ? -.53 : .5;
+    for (let i = 0; i < vertexCount; i++) {
+      const count = counts[i], o = i * 3;
+      for (let axis = 0; axis < 3; axis++) {
+        let average = 0;
+        for (let n = offsets[i]; n < offsets[i + 1]; n++) average += positions[neighbours[n] * 3 + axis];
+        result[o + axis] = count ? positions[o + axis] + strength * (average / count - positions[o + axis]) : positions[o + axis];
+      }
+    }
+    positions.set(result);
+  }
+}
+
+export function createNormalSmoother(indices: Uint32Array, vertexCount: number) {
+  const { counts, offsets, neighbours } = adjacency(indices, vertexCount);
   const result = new Float32Array(vertexCount * 3);
   return (normals: Float32Array) => {
     for (let i = 0; i < vertexCount; i++) {

@@ -127,6 +127,22 @@ test('a firm pointer drag recovers after release without shrinking', async ({ pa
   expect(settled.volume / initial.volume).toBeGreaterThan(.98);
   expect(settled.volume / initial.volume).toBeLessThan(1.02);
   await page.screenshot({ path: `test-results/whale-release-${testInfo.project.name}.png` });
+  await page.keyboard.press('r');
+  await page.mouse.move(viewport.width * .4, viewport.height * .43);
+  await page.mouse.down();
+  expect((await page.evaluate(() => window.blueWhale!.state())).grabbed).toBe(true);
+  // Scale the press with the whale's screen width, so phone portrait height
+  // does not turn the same gesture into a much deeper floor collision.
+  await page.mouse.move(viewport.width * .44, viewport.height * .43 + viewport.width * .14, { steps: 12 });
+  await expect.poll(async () => (await page.evaluate(() => window.blueWhale!.state())).deformation, { timeout: 15000 }).toBeGreaterThan(.35);
+  await page.screenshot({ path: `test-results/whale-squash-${testInfo.project.name}.png` });
+  await page.mouse.up();
+  const squashed = await page.evaluate(() => window.blueWhale!.state());
+  expect(squashed.grabbed).toBe(false);
+  // Allow five simulation seconds to settle; software WebGL on phones can
+  // advance simulation much more slowly than wall time.
+  await expect.poll(async () => (await page.evaluate(() => window.blueWhale!.state())).time, { timeout: 60000 }).toBeGreaterThan(squashed.time + 5);
+  expect((await page.evaluate(() => window.blueWhale!.state())).volume / initial.volume).toBeGreaterThan(.98);
   expect(errors).toEqual([]);
 });
 

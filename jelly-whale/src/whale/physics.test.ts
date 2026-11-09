@@ -4,6 +4,32 @@ import { SoftWhale } from './physics';
 import { applyDisplayHop } from './display';
 
 describe('blue whale tetrahedral body', () => {
+  it('recovers its full shape after a downward squash without locking compressed cells', () => {
+    const simulation = new SoftWhale(createLattice(.18));
+    const volume = simulation.volume();
+    for (let frame = 0; frame < 6; frame++) simulation.step(1 / 60, 0);
+    const start = [-.6611350906702453, 1.5704078215962012, -.01190705394544267] as const;
+    const end = [-.5537371014263304, .6596702315938509, .4144640542891054] as const;
+    simulation.startGrab(...start);
+    for (let frame = 1; frame <= 12; frame++) {
+      simulation.grab!.target = start.map((v, i) => v + (end[i] - v) * frame / 12);
+      simulation.step(1 / 60, 0);
+    }
+    for (let frame = 0; frame < 15; frame++) simulation.step(1 / 60, 0);
+    simulation.grab = null;
+    let lateMovement = 0;
+    for (let frame = 0; frame < 300; frame++) {
+      const before = simulation.positions.slice();
+      simulation.step(1 / 60, 0);
+      if (frame >= 270) {
+        const rms = Math.sqrt(simulation.positions.reduce((sum, value, i) => sum + (value - before[i]) ** 2, 0) / (before.length / 3));
+        lateMovement = Math.max(lateMovement, rms);
+      }
+    }
+    expect(simulation.volume() / volume).toBeGreaterThan(.98);
+    expect(lateMovement).toBeLessThan(.001);
+  });
+
   it('repeated display hops lift the body and settle without accumulating motion or losing volume', () => {
     const simulation = new SoftWhale(createLattice(.18));
     const initialVolume = simulation.volume();

@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { SoftWhale } from './physics';
 import { createEyeSurface } from './eyes';
-import { createNormalSmoother } from './surface';
+import { createNormalSmoother, relaxSurface } from './surface';
 import { applyDisplayHop } from './display';
 import { clamp, createLattice, createSurface, smooth } from './shape';
 import { backFragment, depthMaterial, floorFragment, floorVertex, heightFragment, jellyFragment, shadowFragment, surfaceVertex } from './shaders';
@@ -57,7 +57,8 @@ export function createWhale(host:HTMLElement){
   // The render mesh is independent of the internal volume: preserve the outline
   // without solving almost 19,000 tetrahedra ten times per simulation step.
   const soft=new SoftWhale(createLattice(.18));
-  const surface=createSurface(.075);
+  const surface=createSurface(.065);
+  relaxSurface(surface.positions,surface.indices);
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.BufferAttribute(surface.positions,3).setUsage(THREE.DynamicDrawUsage));
   geometry.setIndex(new THREE.BufferAttribute(surface.indices,1));geometry.computeVertexNormals();

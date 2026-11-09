@@ -1,7 +1,8 @@
 import { clamp, pouchDisplacement, smooth, type Lattice } from './shape';
+import { bindSmoothSkin, skinSmoothSurface, type SkinBinding } from './skinning';
 const floorHeight = Math.fround(.022);
 export type Binding = { ids: [number,number,number,number]; weights: [number,number,number,number] };
-export type SkinBinding = { ids: Uint32Array; weights: Float32Array };
+export type { SkinBinding } from './skinning';
 export class SoftWhale {
   readonly positions: Float32Array;
   readonly velocities: Float32Array;
@@ -97,7 +98,9 @@ export class SoftWhale {
         if (p[i] < floorHeight) {p[i] = floorHeight;corrected = true;}
       }
       for (let t = 0; t < this.tets.length; t += 4) {
-        const minimum = this.minimumVolumes[t / 4] * 1.05;
+        // Leave a wider recovery margin when free: cells sitting against the
+        // validation barrier can otherwise keep rolling back to a pinched pose.
+        const minimum = this.minimumVolumes[t / 4] * (this.grab ? 1.05 : 2);
         const volume = this.tetVolume(p, t);
         if (volume >= minimum) continue;
         corrected = true;
@@ -232,12 +235,9 @@ export class SoftWhale {
   }
   evaluate(binding:Binding):[number,number,number]{const p=this.positions,r:[number,number,number]=[0,0,0];for(let i=0;i<4;i++){const o=binding.ids[i]*3,w=binding.weights[i];r[0]+=p[o]*w;r[1]+=p[o+1]*w;r[2]+=p[o+2]*w;}return r;}
   bind(points:Float32Array):SkinBinding{
-    const ids=new Uint32Array(points.length/3*4),weights=new Float32Array(ids.length);
-    for(let i=0;i<points.length;i+=3){const b=this.embed(points[i],points[i+1],points[i+2]);ids.set(b.ids,i/3*4);weights.set(b.weights,i/3*4);}
-    return {ids,weights};
+    return bindSmoothSkin(this.rest,points,this.lattice.h);
   }
   skin(binding:SkinBinding,result:Float32Array){
-    const p=this.positions;
-    for(let i=0;i<result.length;i+=3){let x=0,y=0,z=0;const o=i/3*4;for(let a=0;a<4;a++){const j=binding.ids[o+a]*3,w=binding.weights[o+a];x+=p[j]*w;y+=p[j+1]*w;z+=p[j+2]*w;}result[i]=x;result[i+1]=Math.max(.025,y);result[i+2]=z;}
+    skinSmoothSurface(binding,this.rest,this.positions,result);
   }
 }

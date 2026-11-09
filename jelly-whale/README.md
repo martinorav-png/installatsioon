@@ -30,7 +30,9 @@ Keyboard: `G` swell, `R` reset, `L` lights out, `Space` pause, `S` quarter speed
 
 Three.js r170 loads through a jsDelivr import map and renders through WebGL2. Separate passes provide refraction, back-face thickness, tinted shadows and contact shading. A still whale appears if WebGL2 or the CDN is unavailable.
 
-The CPU soft body uses a snapped 0.18 lattice (1,744 nodes and 5,810 tetrahedra), five tetrahedra per cell, ten substeps at 60 Hz and barycentric surface/eye attachment. The independent visual mesh uses rounded fin, tail and nose intersections plus smoothed shared-vertex normals. Skinning and normals update only after a physics step; pixel density is capped at 1.5 and shadow/contact maps use smaller offscreen targets. Positive-volume protection and bounded grab-induced velocity prevent cells from folding after release.
+The CPU soft body uses a snapped 0.18 lattice (1,744 nodes and 5,810 tetrahedra), five tetrahedra per cell and ten substeps at 60 Hz. Surface and eye deformation blends overlapping local affine fits with a compact C2 kernel, so individual tetrahedron boundaries do not become hard creases in the gel. These weights are precomputed; animation blends only displacements and retains the rest outline and affine strains. Physics contact points still use barycentric embedding.
+
+The independent visual mesh samples at 0.065, with rounded fin, tail and nose intersections. Alternating Taubin passes fair the initial shell without the cumulative shrinkage of ordinary smoothing; shared-vertex normals soften lighting transitions. Skinning and normals update only after a physics step; pixel density is capped at 1.5 and shadow/contact maps use smaller offscreen targets. Positive-volume protection and bounded grab-induced velocity prevent cells from folding after release.
 
 Reduced motion starts the simulation paused, but grabbing the whale explicitly resumes it. Pointer movement is bounded relative to the original contact point, so the body follows a pull and rebounds on release.
 
@@ -40,7 +42,7 @@ The Rubik Bubbles font is bundled locally as a Latin WOFF subset. Its source is 
 
 Display jumps use stronger upward launches and alternating, opposing head/tail kicks. The display velocity allowance is higher for these jumps; switching back restores the direct-interaction limit.
 
-Inversion protection repairs individual tetrahedra and, when necessary, rolls back only their vertices to the previous substep. It does not restore the entire whale to rest during a grab. Shape recovery uses the integrated spring and damping, without an additional positional tether that would suppress the release wobble.
+Inversion protection repairs individual tetrahedra and, when necessary, rolls back only their vertices to the previous substep. It does not restore the entire whale to rest during a grab. Released cells use a wider projection margin so a hard squash cannot lock them against the rollback boundary. Shape recovery uses the integrated spring and damping, without an additional positional tether that would suppress the release wobble.
 
 Only part of each positional correction transfers back into momentum, so cell stabilization cannot sustain rapid shaking. Viscous damping lets the broad release wobble decay. The eyes share the exact body material instance, including its jelly shader, colour, absorption, reflections and lighting. Their surface meshes remain bound vertex by vertex to the cheek volume.
 
@@ -52,6 +54,6 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-The numerical suite checks inflation, lattice connectivity, release settling, repeated hops, floor contact, eye deformation and normal smoothing. Browser checks cover desktop/phone rendering, mode switching, autonomous motion and orbit, mouse/touch dragging, keyboard controls, production imports and the CDN fallback.
+The numerical suite checks inflation, lattice connectivity, release settling, repeated hops, floor contact, eye deformation, continuous skin deformation, outline/strain preservation and surface smoothing. Browser checks cover desktop/phone rendering, mode switching, autonomous motion and orbit, held pulls and squashes, mouse/touch dragging, keyboard controls, production imports and the CDN fallback.
 
 The existing gallery at the repository root is independent of this study.
