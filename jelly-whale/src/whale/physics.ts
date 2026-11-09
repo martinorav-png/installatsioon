@@ -1,4 +1,5 @@
 import { clamp, pouchDisplacement, smooth, type Lattice } from './shape';
+const floorHeight = Math.fround(.022);
 export type Binding = { ids: [number,number,number,number]; weights: [number,number,number,number] };
 export type SkinBinding = { ids: Uint32Array; weights: Float32Array };
 export class SoftWhale {
@@ -22,6 +23,7 @@ export class SoftWhale {
   grab: { target: number[]; twist: number } | null = null;
   firmness = 1;
   damping = 1.5;
+  speedLimit = 2.4;
   constructor(readonly lattice: Lattice) {
     this.rest = lattice.rest; this.tets = lattice.tets;
     this.positions = this.rest.slice(); this.previous = this.rest.slice(); this.candidate = this.rest.slice(); this.target = this.rest.slice();
@@ -75,34 +77,83 @@ export class SoftWhale {
   }
   volume(){let v=0;for(let t=0;t<this.tets.length;t+=4)v+=this.tetVolume(this.positions,t);return v;}
   reset(){this.positions.set(this.rest);this.velocities.fill(0);this.grab=null;this.lastInflation=-1;this.updateRest(0);}
-  impulse(x:number,y:number,z:number){for(let i=0;i<this.velocities.length;i+=3){this.velocities[i]+=x;this.velocities[i+1]+=y;this.velocities[i+2]+=z;}}
+  impulse(x:number,y:number,z:number,origin?:readonly[number,number,number]){
+    for(let i=0;i<this.velocities.length;i+=3){
+      const weight=origin?Math.exp(-((this.positions[i]-origin[0])**2+(this.positions[i+1]-origin[1])**2+(this.positions[i+2]-origin[2])**2)/.8):1;
+      this.velocities[i]+=x*weight;this.velocities[i+1]+=y*weight;this.velocities[i+2]+=z*weight;
+    }
+  }
   startGrab(x:number,y:number,z:number){
     this.grabOrigin=[x,y,z];this.grab={target:[x,y,z],twist:0};
     for(let i=0;i<this.positions.length;i+=3){const d=(this.positions[i]-x)**2+(this.positions[i+1]-y)**2+(this.positions[i+2]-z)**2;this.grabWeights[i/3]=Math.exp(-d/0.22);}
   }
   private preserveOrientation() {
     const p = this.positions;
+    // Repair only the cells that approach inversion. Returning the entire body
+    // to rest here cancels a held pull, including its upward displacement.
+    for (let pass = 0; pass < 6; pass++) {
+      let corrected = false;
+      for (let i = 1; i < p.length; i += 3) {
+        if (p[i] < floorHeight) {p[i] = floorHeight;corrected = true;}
+      }
+      for (let t = 0; t < this.tets.length; t += 4) {
+        const minimum = this.minimumVolumes[t / 4] * 1.05;
+        const volume = this.tetVolume(p, t);
+        if (volume >= minimum) continue;
+        corrected = true;
+        const a=this.tets[t]*3,b=this.tets[t+1]*3,c=this.tets[t+2]*3,d=this.tets[t+3]*3;
+        const ax=p[b]-p[a],ay=p[b+1]-p[a+1],az=p[b+2]-p[a+2],bx=p[c]-p[a],by=p[c+1]-p[a+1],bz=p[c+2]-p[a+2],cx=p[d]-p[a],cy=p[d+1]-p[a+1],cz=p[d+2]-p[a+2];
+        const g1x=(by*cz-bz*cy)/6,g1y=(bz*cx-bx*cz)/6,g1z=(bx*cy-by*cx)/6;
+        const g2x=(cy*az-cz*ay)/6,g2y=(cz*ax-cx*az)/6,g2z=(cx*ay-cy*ax)/6;
+        const g3x=(ay*bz-az*by)/6,g3y=(az*bx-ax*bz)/6,g3z=(ax*by-ay*bx)/6;
+        const g0x=-g1x-g2x-g3x,g0y=-g1y-g2y-g3y,g0z=-g1z-g2z-g3z;
+        const norm=g0x*g0x+g0y*g0y+g0z*g0z+g1x*g1x+g1y*g1y+g1z*g1z+g2x*g2x+g2y*g2y+g2z*g2z+g3x*g3x+g3y*g3y+g3z*g3z;
+        const s=(minimum-volume)/(norm+1e-20);
+        p[a]+=s*g0x;p[a+1]+=s*g0y;p[a+2]+=s*g0z;
+        p[b]+=s*g1x;p[b+1]+=s*g1y;p[b+2]+=s*g1z;
+        p[c]+=s*g2x;p[c+1]+=s*g2y;p[c+2]+=s*g2z;
+        p[d]+=s*g3x;p[d+1]+=s*g3y;p[d+2]+=s*g3z;
+      }
+      if (!corrected) return;
+    }
+    // Extremely thin boundary cells can defeat the gradient projection. Roll
+    // back only their four vertices, then repair any affected neighbours.
+    for (let pass = 0; pass < 12; pass++) {
+      let repaired = false;
+      for (let i = 1; i < p.length; i += 3) {
+        if (p[i] < floorHeight) {p[i] = floorHeight;repaired = true;}
+      }
+      for (let t = 0; t < this.tets.length; t += 4) {
+        if (this.tetVolume(p, t) >= this.minimumVolumes[t / 4]) continue;
+        repaired = true;
+        for (let j = 0; j < 4; j++) {
+          const o = this.tets[t + j] * 3;
+          p[o] = this.previous[o];p[o + 1] = this.previous[o + 1];p[o + 2] = this.previous[o + 2];
+        }
+      }
+      if (!repaired) return;
+    }
     const valid = () => {
+      for (let i = 1; i < p.length; i += 3) if (!(p[i] >= floorHeight)) return false;
       for (let t = 0; t < this.tets.length; t += 4) {
         if (!(this.tetVolume(p, t) >= this.minimumVolumes[t / 4])) return false;
       }
       return true;
     };
-    if (valid()) return 0;
-    // A hard grab can cross a thin boundary cell. Restore only enough of the
-    // current rest shape to keep each cell oriented before deriving velocity.
+    if (valid()) return;
+    // If neighbouring corrections still conflict, shorten this substep from
+    // its last valid pose. Never pull the sculpture back to its original pose.
     this.candidate.set(p);
-    for (let fraction = .02; fraction < 1; fraction *= 2) {
-      for (let i = 0; i < p.length; i++) p[i] = this.candidate[i] + (this.target[i] - this.candidate[i]) * fraction;
-      if (valid()) return fraction;
+    for (let fraction = .5; fraction > .0001; fraction *= .5) {
+      for (let i = 0; i < p.length; i++) p[i] = this.previous[i] + (this.candidate[i] - this.previous[i]) * fraction;
+      if (valid()) return;
     }
-    p.set(this.target);
-    return 1;
+    p.set(this.previous);
   }
   step(dt:number,inflation:number){
     this.updateRest(clamp(inflation));
     const h=dt/10,p=this.positions,v=this.velocities,prev=this.previous,r=this.target;
-    const decay=Math.exp(-this.damping*h),invH2=1/(h*h),volumeAlpha=1.5e-11*Math.pow(this.lattice.h/.24,4)*invH2/this.firmness;
+    const decay=Math.exp(-2*this.damping*h),invH2=1/(h*h),volumeAlpha=1.5e-11*Math.pow(this.lattice.h/.24,4)*invH2/this.firmness;
     for(let sub=0;sub<10;sub++){
       prev.set(p);
       for(let i=0;i<p.length;i+=3){
@@ -120,10 +171,8 @@ export class SoftWhale {
         const s=(len-this.edgeRest[e])/(len*(2+alpha));
         p[a]+=dx*s;p[a+1]+=dy*s;p[a+2]+=dz*s;p[b]-=dx*s;p[b+1]-=dy*s;p[b+2]-=dz*s;
       }
-      // Compliant rest-shape tethers stabilize very thin snapped boundary tets.
-      // Their target includes the floor reaction, so the pouch expands without inversion.
-      const memory=(this.grab?.008:.018)*Math.sqrt(this.firmness);
-      for(let i=0;i<p.length;i++)p[i]+=(r[i]-p[i])*memory;
+      // Shape recovery is already integrated as a spring above. A second
+      // positional tether here becomes an extremely stiff spring at 600 Hz.
       for(let t=0;t<this.tets.length;t+=4){
         const a=this.tets[t]*3,b=this.tets[t+1]*3,c=this.tets[t+2]*3,d=this.tets[t+3]*3;
         const ax=p[b]-p[a],ay=p[b+1]-p[a+1],az=p[b+2]-p[a+2],bx=p[c]-p[a],by=p[c+1]-p[a+1],bz=p[c+2]-p[a+2],cx=p[d]-p[a],cy=p[d+1]-p[a+1],cz=p[d+2]-p[a+2];
@@ -149,15 +198,18 @@ export class SoftWhale {
         }
       }
       for(let i=0;i<p.length;i+=3){
-        if(p[i+1]<.022){p[i+1]=.022;p[i]+=(prev[i]-p[i])*.12;p[i+2]+=(prev[i+2]-p[i+2])*.12;}
+        if(p[i+1]<floorHeight){p[i+1]=floorHeight;p[i]+=(prev[i]-p[i])*.12;p[i+2]+=(prev[i+2]-p[i+2])*.12;}
       }
-      const recovery = 1 - this.preserveOrientation();
+      this.preserveOrientation();
       for(let i=0;i<p.length;i+=3){
         const vx=(p[i]-prev[i])/h,vy=(p[i+1]-prev[i+1])/h,vz=(p[i+2]-prev[i+2])/h;
         // Pointer targets are discontinuous; do not turn their correction into
         // unbounded release momentum in the smallest boundary cells.
-        const scale=recovery*Math.min(1,2.4/(Math.hypot(vx,vy,vz)||1));
-        v[i]=vx*scale;v[i+1]=vy*scale;v[i+2]=vz*scale;
+        const scale=Math.min(1,this.speedLimit/(Math.hypot(vx,vy,vz)||1));
+        // Constraint repair is positional stabilization, not an elastic impact.
+        // Retain the integrated momentum and only partially transfer its
+        // correction into velocity, so tiny cell repairs cannot pump energy.
+        v[i]=v[i]*.8+vx*scale*.2;v[i+1]=v[i+1]*.8+vy*scale*.2;v[i+2]=v[i+2]*.8+vz*scale*.2;
       }
     }
   }

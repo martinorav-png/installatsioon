@@ -6,7 +6,10 @@ declare global { interface Window { blueWhale?: ReturnType<typeof createWhale> }
 
 export function JellyInstallation() {
   const hostRef = useRef<HTMLDivElement>(null);
+  const studyRef = useRef<ReturnType<typeof createWhale> | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+  const [interactive, setInteractive] = useState(false);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -16,7 +19,9 @@ export function JellyInstallation() {
     void import('../whale/scene').then(module => {
       if (cancelled) return;
       study = module.createWhale(host);
+      studyRef.current = study;
       window.blueWhale = study;
+      setReady(true);
     }).catch(error => {
       if (!cancelled) {
         console.warn('Interactive rendering unavailable; showing the still whale.', error);
@@ -26,12 +31,20 @@ export function JellyInstallation() {
     return () => {
       cancelled = true;
       study?.dispose();
+      studyRef.current = null;
       if (window.blueWhale === study) delete window.blueWhale;
     };
   }, []);
+  useEffect(() => {studyRef.current?.setInteractive(interactive);}, [interactive]);
   return (
     <main className="jelly-installation" aria-label="Blue Whale Jelly · Material Studies No. 058">
       <div className="jelly-stage" ref={hostRef} />
+      {!unavailable && <div className="mode-controls">
+        <p id="whale-mode-label" className="mode-label" role="status">{interactive ? 'jiggly mode on' : 'floppy mode on'}</p>
+        <button className="mode-toggle" type="button" role="switch" aria-label="Interactive mode" aria-describedby="whale-mode-label" aria-checked={interactive} disabled={!ready} onClick={() => setInteractive(value => !value)}>
+          <span className="mode-toggle-track" aria-hidden="true"><span /></span>
+        </button>
+      </div>}
       {unavailable && <svg className="whale-fallback" viewBox="0 0 800 400" role="img" aria-label="Blue jelly whale. Interactive rendering requires WebGL2.">
         <defs>
           <linearGradient id="blue-jelly" x1="0" y1="0" x2="0.1" y2="1"><stop stopColor="#96dcff"/><stop offset="0.4" stopColor="#3a8ef0"/><stop offset="1" stopColor="#a2cbdc"/></linearGradient>
