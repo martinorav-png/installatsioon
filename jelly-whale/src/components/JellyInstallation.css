@@ -1,0 +1,17 @@
+.jelly-installation,
+.jelly-installation * { box-sizing: border-box; }
+.jelly-installation {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #fff;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  color-scheme: light;
+}
+.jelly-stage { position: absolute; inset: 0; }
+.jelly-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.whale-fallback { position: absolute; left: 8%; top: 15%; width: 84%; height: 70%; pointer-events: none; }

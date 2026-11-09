@@ -1,0 +1,124 @@
+:root {
+  color-scheme: light;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 17px;
+  font-weight: 400;
+  color: #e3e8e3;
+  background: #ffffff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; overflow: hidden; }
+body { margin: 0; overscroll-behavior: none; }
+::selection { background: #e8e8e835; }
+
+.installation {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  height: 100dvh;
+  background: #030404;
+  overflow: hidden;
+  isolation: isolate;
+  touch-action: manipulation;
+}
+
+.crt-screen {
+  position: absolute;
+  inset: clamp(5px, 0.85vw, 14px);
+  background: #120f17;
+  isolation: isolate;
+}
+
+.crt-screen::before,
+.crt-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Glass sits above the phosphor raster, with a broad curved reflection. */
+.crt-screen::before {
+  background:
+    radial-gradient(ellipse at 28% -18%, #e5d9f526 0%, transparent 57%),
+    radial-gradient(ellipse at 50% 50%, transparent 34%, #00000030 68%, #000000d1 100%);
+}
+
+.crt-screen::after {
+  border-radius: 6% / 8%;
+  box-shadow: inset 0 0 22px #000000c2, inset 0 0 110px #00000070;
+  background: linear-gradient(155deg, #e0d5ed0c, transparent 32%, #00000014 80%);
+}
+
+.crt-optics { position: absolute; width: 0; height: 0; pointer-events: none; }
+
+/* Fixed-size RGB phosphor triads and the gaps between electron-beam rows. */
+.crt-raster {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, #ffffff0a 0 50%, #00000045 50% 75%, #00000085 75% 100%),
+    linear-gradient(to right, #ff65504d 0 33.333%, #6dff9033 33.333% 66.667%, #688bff57 66.667% 100%);
+  background-size: 3px 4px;
+  mix-blend-mode: overlay;
+}
+
+.crt-content {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  padding: max(28px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+}
+
+.cursor {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 4px;
+  height: clamp(28px, 3.5vh, 34px);
+  background: #f3f8f0;
+  box-shadow:
+    0 0 3px #ffffffe6,
+    0 0 10px #e3f2e3a6,
+    0 0 24px #d5e4d263,
+    0 0 54px #d5e4d22e;
+  animation: presence 5.73s step-end infinite;
+}
+
+@keyframes presence {
+  0%, 19%, 38%, 58%, 83% { opacity: 1; }
+  9%, 28%, 48%, 70%, 93% { opacity: 0; }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 600px) {
+  .crt-content { padding-inline: max(24px, env(safe-area-inset-left)); }
+}
+
+@media (max-height: 480px) {
+  .crt-content { padding-block: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor { animation: none; }
+}
