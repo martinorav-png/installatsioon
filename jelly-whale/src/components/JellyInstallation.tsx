@@ -13,7 +13,7 @@ export function JellyInstallation() {
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    document.title = 'Blue Whale Jelly · Material Studies No. 058';
+    document.title = 'vaalatarretis';
     let study: ReturnType<typeof createWhale> | undefined;
     let cancelled = false;
     void import('../whale/scene').then(module => {
